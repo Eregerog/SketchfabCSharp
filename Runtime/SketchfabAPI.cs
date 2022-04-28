@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public static class SketchfabAPI
+public static partial class SketchfabAPI
 {
     public static bool Authorized => !string.IsNullOrWhiteSpace(m_Token);
 
