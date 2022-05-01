@@ -82,7 +82,7 @@ public class SketchfabModelDiskCache
         });
     }
 
-    public Task<SketchfabModel> GetCachedModelMetadata(string _uid)
+    public Task<SketchfabModelMetadata> GetCachedModelMetadata(string _uid)
     {
         return Task.Run(() =>
         {
@@ -90,7 +90,7 @@ public class SketchfabModelDiskCache
             {
                 m_CacheDirectoryLock.Wait();
                 string metadataPath = Path.Combine(m_CacheDirectoryInfo.FullName, _uid, string.Format("{0}_metadata.json", _uid));
-                return SketchfabModel.FromJson(File.ReadAllText(metadataPath));
+                return SketchfabModelMetadata.FromJson(File.ReadAllText(metadataPath));
             }
             catch (Exception _exception)
             {
@@ -103,7 +103,7 @@ public class SketchfabModelDiskCache
         });
     }
 
-    public void CacheModelMetadata(SketchfabModel _model)
+    public void CacheModelMetadata(SketchfabModelMetadata _model)
     {
         try
         {
@@ -121,7 +121,7 @@ public class SketchfabModelDiskCache
         }
     }
 
-    public Task<bool> IsInCache(SketchfabModel _model)
+    public Task<bool> IsInCache(SketchfabModelMetadata _model)
     {
         return IsInCache(_model.Uid);
     }

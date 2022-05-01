@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public class SketchfabModelList
 {
     [JsonProperty("results")]
-    public List<SketchfabModel> Models { get; set; }
+    public List<SketchfabModelMetadata> Models { get; set; }
 
     [JsonProperty("next")]
     public string NextPageUrl { get; set; }

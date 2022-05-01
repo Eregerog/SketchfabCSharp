@@ -2,8 +2,8 @@
 
 public static class DownloadHandlerSketchfabModel
 {
-    public static SketchfabResponse<SketchfabModel> GetModel(UnityWebRequest _unityWebRequest)
+    public static SketchfabResponse<SketchfabModelMetadata> GetModel(UnityWebRequest _unityWebRequest)
     {
-        return SketchfabResponse<SketchfabModel>.FromModelResponse(_unityWebRequest);
+        return SketchfabResponse<SketchfabModelMetadata>.FromModelResponse(_unityWebRequest);
     }
 }

@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json; 
 
-public class SketchfabModel
+public class SketchfabModelMetadata
 {
     public string Uid { get; set; }
     public string Name { get; set; }
@@ -28,8 +28,8 @@ public class SketchfabModel
         return JsonConvert.SerializeObject(this);
     }
 
-    public static SketchfabModel FromJson(string _data)
+    public static SketchfabModelMetadata FromJson(string _data)
     {
-        return JsonConvert.DeserializeObject<SketchfabModel>(_data);
+        return JsonConvert.DeserializeObject<SketchfabModelMetadata>(_data);
     }
 }

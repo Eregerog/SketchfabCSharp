@@ -54,7 +54,7 @@ public static partial class SketchfabAPI
         });
     }
 
-    public static void GetModel(string _modelUID, Action<SketchfabResponse<SketchfabModel>> _onModelRetrieved, bool _enableCache=false)
+    public static void GetModel(string _modelUID, Action<SketchfabResponse<SketchfabModelMetadata>> _onModelRetrieved, bool _enableCache=false)
     {
         // Make sure that the data is initialized as persistent data path can't be accessed from the main thread
         SketchfabModelImporter.EnsureInitialized();
@@ -67,10 +67,10 @@ public static partial class SketchfabAPI
             if (inCache)
             {
                 // Try to get the model metadata
-                SketchfabModel modelMetadata = Task.Run(() => SketchfabModelImporter.GetCachedModelMetadata(_modelUID)).Result;
+                SketchfabModelMetadata modelMetadata = Task.Run(() => SketchfabModelImporter.GetCachedModelMetadata(_modelUID)).Result;
                 if (modelMetadata != null)
                 {
-                    SketchfabResponse<SketchfabModel> response = SketchfabResponse<SketchfabModel>.OfflineResponse(modelMetadata);
+                    SketchfabResponse<SketchfabModelMetadata> response = SketchfabResponse<SketchfabModelMetadata>.OfflineResponse(modelMetadata);
                     _onModelRetrieved?.Invoke(response);
                     return;
                 }
@@ -81,7 +81,7 @@ public static partial class SketchfabAPI
         UnityWebRequest uwr = UnityWebRequestSketchfabModel.GetModel(_modelUID);
         SketchfabWebRequestManager.Instance.SendRequest(uwr, (UnityWebRequest _request) =>
         {
-            SketchfabResponse<SketchfabModel> response = DownloadHandlerSketchfabModel.GetModel(uwr);
+            SketchfabResponse<SketchfabModelMetadata> response = DownloadHandlerSketchfabModel.GetModel(uwr);
             // NOTE: In order to have backward compatibility we need to check the case
             // where the metadata is not cached but the model is already cached
             if(_enableCache && inCache)

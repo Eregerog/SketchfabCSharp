@@ -6,7 +6,7 @@ using UnityEngine.Networking;
 using GLTFast;
 using System.Threading.Tasks;
 
-public static class SketchfabModelImporter
+public static partial class SketchfabModelImporter
 {
     private const string m_SketchfabModelCacheFolderName = "SketchfabModelCache";
     private const string m_SketchfabModelTemporaryDownloadFolderName = "SketchfabModelTemp";
@@ -23,7 +23,7 @@ public static class SketchfabModelImporter
         }
     }
 
-    public static async void Import(SketchfabModel _model, Action<GameObject> _onModelImported, bool _enableCache=false)
+    public static async void DownloadAndImport(SketchfabModelMetadata _model, Action<GameObject> _onModelImported, bool _enableCache=false)
     {
         if(_enableCache)
         {
@@ -34,87 +34,99 @@ public static class SketchfabModelImporter
             }
         }
 
+        Download(_model, _downloaded => Import(_downloaded, _onModelImported));
+    }
+
+    public static void Download(SketchfabModelMetadata _model, Action<DownloadedSketchfabModel> _onModelDownloaded) {
         SketchfabAPI.GetGLTFModelDownloadUrl(_model.Uid, (SketchfabResponse<string> _modelDownloadUrl) =>
         {
             if (!_modelDownloadUrl.Success)
             {
                 Debug.LogError(_modelDownloadUrl.ErrorMessage);
 
-                _onModelImported?.Invoke(null);
+                _onModelDownloaded?.Invoke(null);
 
                 return;
             }
 
-            Import(_model, _modelDownloadUrl.Object, _onModelImported);
+            Download(_model, _modelDownloadUrl.Object, _onModelDownloaded);
         });
     }
 
-    private static void Import(SketchfabModel _model, string _downloadUrl, Action<GameObject> _onModelImported)
+    public static void Import(DownloadedSketchfabModel _downloaded, Action<GameObject> _onModelImported)
     {
+        if (_downloaded == null)
+        {
+            _onModelImported?.Invoke(null);
+
+            return;
+        }
+        
+        // Lock the temporary folder for all following operations to
+        // avoid it from flushing itself in the middle of it
+        m_Temp.Lock();
+
+        try
+        {
+            string archivePath = Path.Combine(m_Temp.AbsolutePath, _downloaded.ModelMetadata.Uid);
+            // Make sure to save again the model if downloaded twice
+            if(Directory.Exists(archivePath))
+            {
+                Directory.Delete(archivePath, true);
+            }
+        
+            using (ZipArchive zipArchive = new ZipArchive(new MemoryStream(_downloaded.DownloadedData), ZipArchiveMode.Read))
+            {
+                zipArchive.ExtractToDirectory(archivePath);
+            }
+        
+
+            SaveModelMetadata(archivePath, _downloaded.ModelMetadata);
+            GltfImport($"file://{Path.Combine(archivePath, "scene.gltf")}", (GameObject _importedModel) =>
+            {
+                DirectoryInfo gltfDirectoryInfo = new DirectoryInfo(archivePath);
+                m_Cache.AddToCache(gltfDirectoryInfo);
+
+                _onModelImported?.Invoke(_importedModel);
+            });
+        }
+        finally
+        {
+            // No matter what happens, realse the lock so that
+            // it doesn't get stuck
+            m_Temp.Unlock();
+        }
+    }
+
+    private static void Download(SketchfabModelMetadata _model, string _downloadUrl, Action<DownloadedSketchfabModel> _onModelDownloaded) {
         UnityWebRequest downloadRequest = UnityWebRequest.Get(_downloadUrl);
 
-        SketchfabWebRequestManager.Instance.SendRequest(downloadRequest, (UnityWebRequest _request) =>
-        {
+        SketchfabWebRequestManager.Instance.SendRequest(downloadRequest, (UnityWebRequest _request) => {
             if (downloadRequest.isHttpError ||
-                downloadRequest.isNetworkError)
-            {
+                downloadRequest.isNetworkError) {
                 Debug.Log(downloadRequest.error);
 
-                _onModelImported?.Invoke(null);
+                _onModelDownloaded?.Invoke(null);
 
                 return;
             }
 
-            // Lock the temporary folder for all following operations to
-            // avoid it from flushing itself in the middle of it
-            m_Temp.Lock();
-
-            try
-            {
-                string archivePath = Path.Combine(m_Temp.AbsolutePath, _model.Uid);
-                // Make sure to save again the model if downloaded twice
-                if(Directory.Exists(archivePath))
-                {
-                    Directory.Delete(archivePath, true);
-                }
-                
-                using (ZipArchive zipArchive = new ZipArchive(new MemoryStream(downloadRequest.downloadHandler.data), ZipArchiveMode.Read))
-                {
-                    zipArchive.ExtractToDirectory(archivePath);
-                }
-                
-
-                SaveModelMetadata(archivePath, _model);
-                GltfImport($"file://{Path.Combine(archivePath, "scene.gltf")}", (GameObject _importedModel) =>
-                {
-                    DirectoryInfo gltfDirectoryInfo = new DirectoryInfo(archivePath);
-                    m_Cache.AddToCache(gltfDirectoryInfo);
-
-                    _onModelImported?.Invoke(_importedModel);
-                });
-            }
-            finally
-            {
-                // No matter what happens, realse the lock so that
-                // it doesn't get stuck
-                m_Temp.Unlock();
-            }
-
+            _onModelDownloaded?.Invoke(new DownloadedSketchfabModel(_model, downloadRequest.downloadHandler.data));
         });
     }
 
-    private static void SaveModelMetadata(string _destination, SketchfabModel _model)
+    private static void SaveModelMetadata(string _destination, SketchfabModelMetadata _model)
     {
         // Write the model metadata in order to avoid server queries
         File.WriteAllText(Path.Combine(_destination, string.Format("{0}_metadata.json", _model.Uid)), _model.GetJsonString());
     }
 
-    public static void SaveModelMetadataToCache(SketchfabModel _model)
+    public static void SaveModelMetadataToCache(SketchfabModelMetadata _model)
     {
         m_Cache.CacheModelMetadata(_model);
     }
 
-    static private async void GltfImport(string _gltfFilePath, Action<GameObject> _onModelImported)
+    private static async void GltfImport(string _gltfFilePath, Action<GameObject> _onModelImported)
     {
         GltfImport gltf = new GltfImport();
 
@@ -153,7 +165,7 @@ public static class SketchfabModelImporter
         return m_Cache.IsInCache(_uid);
     }
 
-    public static Task<SketchfabModel> GetCachedModelMetadata(string _uid)
+    public static Task<SketchfabModelMetadata> GetCachedModelMetadata(string _uid)
     {
         return m_Cache.GetCachedModelMetadata(_uid);
     }

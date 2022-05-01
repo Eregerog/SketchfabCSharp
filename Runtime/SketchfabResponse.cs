@@ -101,9 +101,9 @@ public class SketchfabResponse<T>
         return response;
     }
 
-    internal static SketchfabResponse<SketchfabModel> FromModelResponse(UnityWebRequest _modelRequest)
+    internal static SketchfabResponse<SketchfabModelMetadata> FromModelResponse(UnityWebRequest _modelRequest)
     {
-        SketchfabResponse<SketchfabModel> response = new SketchfabResponse<SketchfabModel>();
+        SketchfabResponse<SketchfabModelMetadata> response = new SketchfabResponse<SketchfabModelMetadata>();
         if (_modelRequest.responseCode != 200)
         {
             ParseModelErrorResponse(response, _modelRequest);
@@ -111,7 +111,7 @@ public class SketchfabResponse<T>
             return response;
         }
 
-        response.Object = JsonConvert.DeserializeObject<SketchfabModel>(_modelRequest.downloadHandler.text);
+        response.Object = JsonConvert.DeserializeObject<SketchfabModelMetadata>(_modelRequest.downloadHandler.text);
         response.Success = true;
 
         return response;
