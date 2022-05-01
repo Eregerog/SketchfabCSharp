@@ -75,13 +75,11 @@ public static partial class SketchfabModelImporter
                 Directory.Delete(archivePath, true);
             }
         
-            using (ZipArchive zipArchive = new ZipArchive(new MemoryStream(_downloaded.DownloadedData), ZipArchiveMode.Read))
+            using (ZipArchive zipArchive = new ZipArchive(new MemoryStream(_downloaded.GltfModel.DownloadedData), ZipArchiveMode.Read))
             {
                 zipArchive.ExtractToDirectory(archivePath);
             }
-        
-
-            SaveModelMetadata(archivePath, _downloaded.ModelMetadata);
+            
             GltfImport($"file://{Path.Combine(archivePath, "scene.gltf")}", (GameObject _importedModel) =>
             {
                 DirectoryInfo gltfDirectoryInfo = new DirectoryInfo(archivePath);
@@ -92,8 +90,7 @@ public static partial class SketchfabModelImporter
         }
         finally
         {
-            // No matter what happens, realse the lock so that
-            // it doesn't get stuck
+            // No matter what happens, release the lock so that it doesn't get stuck
             m_Temp.Unlock();
         }
     }
@@ -111,14 +108,8 @@ public static partial class SketchfabModelImporter
                 return;
             }
 
-            _onModelDownloaded?.Invoke(new DownloadedSketchfabModel(_model, downloadRequest.downloadHandler.data));
+            _onModelDownloaded?.Invoke(new DownloadedSketchfabModel(_model, new SketchfabGltfModel(downloadRequest.downloadHandler.data)));
         });
-    }
-
-    private static void SaveModelMetadata(string _destination, SketchfabModelMetadata _model)
-    {
-        // Write the model metadata in order to avoid server queries
-        File.WriteAllText(Path.Combine(_destination, string.Format("{0}_metadata.json", _model.Uid)), _model.GetJsonString());
     }
 
     public static void SaveModelMetadataToCache(SketchfabModelMetadata _model)
